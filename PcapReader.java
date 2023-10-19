@@ -1,4 +1,3 @@
-package wireshark;
 
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -8,12 +7,29 @@ public class PcapReader {
 
     public static void main(String[] args) {
         // Spécifiez le chemin complet du fichier pcap
-        String filePath = "chemin/vers/le/fichier.pcap";
+        String filePath = args[0];
 
         try {
             readPcapFile(filePath);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private static String mapPacketType(byte[] packetType) {
+        String s = "";
+        for (byte b : packetType) {
+            s+=(String.format("%02X", b));
+        }
+        switch (s) {
+            case "0800":
+                return "IPv4";
+            case "0806":
+                return "ARP";
+            case "86DD":
+                return "IPv6";
+            default:
+                return "Unknown";
         }
     }
 
@@ -31,23 +47,33 @@ public class PcapReader {
 
             // Lecture des paquets pcap
             int packetNumber = 1;
-            while (dataInputStream.available() > 0) {
+
+            int bytesRead;
+            while (dataInputStream.available() >= 16) {
                 // En-tête du paquet pcap (16 octets)
                 byte[] packetHeader = new byte[16];
                 dataInputStream.readFully(packetHeader);
 
-                // Taille du paquet (en octets)
-                int packetSize = ((packetHeader[12] & 0xFF) << 24) | ((packetHeader[13] & 0xFF) << 16)
-                        | ((packetHeader[14] & 0xFF) << 8) | (packetHeader[15] & 0xFF);
+                int packetSize = (packetHeader[12] & 0xFF) |
+                    ((packetHeader[13] & 0xFF) << 8) |
+                    ((packetHeader[14] & 0xFF) << 16) |
+                    ((packetHeader[15] & 0xFF) << 24);
+
+                System.out.println("Taille: " + packetSize + " octets");
 
                 // Données du paquet
                 byte[] packetData = new byte[packetSize];
-                dataInputStream.readFully(packetData);
+                if (dataInputStream.read(packetData) != packetSize) {
+                    throw new IOException("Unable to read packet data");
+                }
+
+
+                byte [] packetType = {packetData[12], packetData[13]};
 
                 // Affichage des informations du paquet en hexadécimal
-                System.out.println("Packet " + packetNumber + " (Hex):");
-                printHex(packetHeader);
-                printHex(packetData);
+                System.out.println("Packet " + packetNumber + " - Type: " + mapPacketType(packetType));
+                //printHex(packetHeader);
+                //printHex(packetData);
 
                 packetNumber++;
             }
