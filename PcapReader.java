@@ -19,8 +19,8 @@ public class PcapReader {
             int packetNumber = 1;
             
 
-            //while (dataInputStream.available() >= 1) {//Tant qu'il y a au moin un byte à lire
-            while(packetNumber<12){
+            while (dataInputStream.available() >= 1) {//Tant qu'il y a au moin un byte à lire
+            //while(packetNumber<12){
                 // En-tête du paquet pcap (16 octets)
                 byte[] packetHeader = new byte[16];
                 dataInputStream.readFully(packetHeader);

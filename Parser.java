@@ -188,7 +188,7 @@ public class Parser {
         String checksumString = String.format("%04X", ((checksum[0] & 0xFF)<<8) | ((checksum[1] & 0xFF)));
 
         System.out.print("\u001B[1mICMP:\u001B[0m");
-        System.out.print(" Type: " + type);
+        System.out.print(" Type: " + interpreter.getICMPType(type));
         System.out.print(" Code: " + code);
         System.out.println(" Checksum: " + checksumString);
     }

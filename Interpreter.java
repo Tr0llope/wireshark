@@ -97,4 +97,41 @@ public class Interpreter {
                     return "Unknown";
             }
         }
+    
+    public String getICMPType(byte type){
+        switch (type) {
+            case 0:
+                return "Echo Reply";
+            case 3:
+                return "Destination Unreachable";
+            case 4:
+                return "Source Quench";
+            case 5:
+                return "Redirect";
+            case 8:
+                return "Echo Request";
+            case 9:
+                return "Router Advertisement";
+            case 10:
+                return "Router Solicitation";
+            case 11:
+                return "Time Exceeded";
+            case 12:
+                return "Parameter Problem";
+            case 13:
+                return "Timestamp";
+            case 14:
+                return "Timestamp Reply";
+            case 15:
+                return "Information Request";
+            case 16:
+                return "Information Reply";
+            case 17:
+                return "Address Mask Request";
+            case 18:
+                return "Address Mask Reply";
+            default:
+                return "Unknown";
+        }
+    }
 }
