@@ -5,35 +5,10 @@ import java.io.IOException;
 
 public class PcapReader {
 
-    public static void main(String[] args) {
-        // Spécifiez le chemin complet du fichier pcap
-        String filePath = args[0];
-
-        try {
-            readPcapFile(filePath);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public PcapReader() {
     }
 
-    private static String mapPacketType(byte[] packetType) {
-        String s = "";
-        for (byte b : packetType) {
-            s+=(String.format("%02X", b));
-        }
-        switch (s) {
-            case "0800":
-                return "IPv4";
-            case "0806":
-                return "ARP";
-            case "86DD":
-                return "IPv6";
-            default:
-                return "Unknown";
-        }
-    }
-
-    private static void readPcapFile(String filePath) throws IOException {
+    public void readPcapFile(String filePath) throws IOException {
         try (FileInputStream fileInputStream = new FileInputStream(filePath);
              DataInputStream dataInputStream = new DataInputStream(fileInputStream)) {
 
@@ -41,15 +16,11 @@ public class PcapReader {
             byte[] fileHeader = new byte[24];
             dataInputStream.readFully(fileHeader);
 
-            // Affichage de l'en-tête en hexadécimal
-            System.out.println("File Header (Hex):");
-            printHex(fileHeader);
-
-            // Lecture des paquets pcap
             int packetNumber = 1;
+            
 
-            int bytesRead;
-            while (dataInputStream.available() >= 16) {
+            //while (dataInputStream.available() >= 1) {//Tant qu'il y a au moin un byte à lire
+            while(packetNumber<12){
                 // En-tête du paquet pcap (16 octets)
                 byte[] packetHeader = new byte[16];
                 dataInputStream.readFully(packetHeader);
@@ -59,31 +30,67 @@ public class PcapReader {
                     ((packetHeader[14] & 0xFF) << 16) |
                     ((packetHeader[15] & 0xFF) << 24);
 
-                System.out.println("Taille: " + packetSize + " octets");
+                System.out.println("Frame " + packetNumber + ": Taille =  " + packetSize + " octets");
 
                 // Données du paquet
                 byte[] packetData = new byte[packetSize];
                 if (dataInputStream.read(packetData) != packetSize) {
                     throw new IOException("Unable to read packet data");
                 }
-
-
-                byte [] packetType = {packetData[12], packetData[13]};
-
-                // Affichage des informations du paquet en hexadécimal
-                System.out.println("Packet " + packetNumber + " - Type: " + mapPacketType(packetType));
-                //printHex(packetHeader);
-                //printHex(packetData);
-
+                Parser parser = new Parser();
+                String packetType = parser.ethernet(packetData);
+                switch (packetType) {
+                    case "ARP":
+                        parser.arp(packetData);
+                        break;
+                    case "IPv4":
+                        String protocol = parser.ipv4(packetData);
+                        switch (protocol) {
+                            case "TCP":
+                                String[] ports_flags = parser.tcp(packetData);
+                                boolean isresponse = false;
+                                if (ports_flags[2].equals("0018")) {
+                                    if (ports_flags[0].equals("0050")) { //source port == 80
+                                        isresponse = true;
+                                        parser.http(packetData, isresponse);
+                                    }
+                                    else if (ports_flags[1].equals("0050")){
+                                        parser.http(packetData, isresponse);
+                                    } 
+                                }
+                                break;
+                            case "ICMP":
+                                parser.icmp(packetData);
+                                break;
+                            case "UDP":
+                                String [] udpPorts = parser.udp(packetData);
+                                if(udpPorts[1].equals("53") || udpPorts[0].equals("53")){
+                                    parser.dns(packetData);
+                                } else if(udpPorts[1].equals("443") || udpPorts[0].equals("443")){
+                                    parser.quic(packetData);
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                        break;
+                    case "IPv6":
+                        String protocol6 = parser.ipv6(packetData);
+                        if(protocol6.equals("UDP")){
+                            String [] udpPorts = parser.udp(packetData);
+                            if(udpPorts[1].equals("53") || udpPorts[0].equals("53")){
+                                parser.dns(packetData);
+                            } else if(udpPorts[1].equals("443") || udpPorts[0].equals("443")){
+                                parser.quic(packetData);
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                System.out.println();
                 packetNumber++;
             }
         }
-    }
-
-    private static void printHex(byte[] bytes) {
-        for (byte b : bytes) {
-            System.out.print(String.format("%02X ", b));
-        }
-        System.out.println();
     }
 }
