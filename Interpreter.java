@@ -48,7 +48,7 @@ public class Interpreter {
                 }
             } catch (UnknownHostException e) {
                 e.printStackTrace();
-                return "Unknown Host"; // Handle the exception appropriately in your code
+                return "Unknown Host";
             }
         }
     
@@ -71,7 +71,7 @@ public class Interpreter {
                 return address.getHostAddress();
             } catch (UnknownHostException e) {
                 e.printStackTrace();
-                return null; // Handle the exception appropriately in your code
+                return null;
             }
         }
 
@@ -130,6 +130,33 @@ public class Interpreter {
                 return "Address Mask Request";
             case 18:
                 return "Address Mask Reply";
+            default:
+                return "Unknown";
+        }
+    }
+
+    public String getTCPFlags(String flags){
+        switch (flags) {
+            case "0000":
+                return "No flags";
+            case "0001":
+                return "FIN";
+            case "0002":
+                return "SYN";
+            case "0004":
+                return "RST";
+            case "0008":
+                return "PSH";
+            case "0010":
+                return "ACK";
+            case "0018":
+                return "PSH, ACK";
+            case "0028":
+                return "SYN, ACK";
+            case "0011":
+                return "FIN, ACK";
+            case "0014":
+                return "RST, ACK";
             default:
                 return "Unknown";
         }

@@ -6,7 +6,7 @@ public class Wireshark {
 
         try {
             PcapReader pcapReader = new PcapReader();
-            pcapReader.readPcapFile(filePath);
+            pcapReader.readPcapFile(args, filePath);
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,7 +1,9 @@
 public class Parser {
     Interpreter interpreter;
+    int start_index;
     public Parser() {
         this.interpreter = new Interpreter();
+        this.start_index = 0;
     }
 
     public String ipv4(byte[] packetData){
@@ -90,18 +92,18 @@ public class Parser {
     }
 
     public String[] tcp(byte[] packetData){
-        byte[] sourcePort = {packetData[34], packetData[35]};
+        byte[] sourcePort = {packetData[54], packetData[55]};
         int sourcePortInt = ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF));
         String sourcePortString = String.format("%04X", ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF)));
-        byte[] destinationPort = {packetData[36], packetData[37]};
+        byte[] destinationPort = {packetData[56], packetData[57]};
         int destinationPortInt = ((destinationPort[0] & 0xFF)<<8) | ((destinationPort[1] & 0xFF));
         String destinationPortString = String.format("%04X", ((destinationPort[0] & 0xFF)<<8) | ((destinationPort[1] & 0xFF)));
-        byte[] sequenceNumber = {packetData[38], packetData[39], packetData[40], packetData[41]};
+        byte[] sequenceNumber = {packetData[58], packetData[59], packetData[60], packetData[61]};
         int sequenceNumberInt = ((sequenceNumber[0] & 0xFF)<<24) | ((sequenceNumber[1] & 0xFF)<<16) | ((sequenceNumber[2] & 0xFF)<<8) | ((sequenceNumber[3] & 0xFF));
-        byte[] acknowledgementNumber = {packetData[42], packetData[43], packetData[44], packetData[45]};
+        byte[] acknowledgementNumber = {packetData[62], packetData[63], packetData[64], packetData[65]};
         int acknowledgementNumberInt = ((acknowledgementNumber[0] & 0xFF)<<24) | ((acknowledgementNumber[1] & 0xFF)<<16) | ((acknowledgementNumber[2] & 0xFF)<<8) | ((acknowledgementNumber[3] & 0xFF));
-        byte headerLength = (byte) ((packetData[46] & 0xF0) >> 4);
-        byte[] flags = {packetData[47], packetData[48]};
+        byte headerLength = (byte) ((packetData[66] & 0xF0) >> 4);
+        byte[] flags = {packetData[67], packetData[68]};
         String flagsString = String.format("%04X", flags[0], flags[1]);
 
         System.out.print("\u001B[1mTCP:\u001B[0m");
@@ -110,7 +112,7 @@ public class Parser {
         System.out.print(" Sequence number: " + String.format("%d",sequenceNumberInt));
         System.out.print(" Acknowledgement number: " + String.format("%d",acknowledgementNumberInt));
         System.out.print(" Header length: " + headerLength);
-        System.out.println(" Flags: " + flagsString);
+        System.out.println(" Flags: " + interpreter.getTCPFlags(flagsString));
         String [] tab = {sourcePortString, destinationPortString, flagsString};
         return tab;
     }
