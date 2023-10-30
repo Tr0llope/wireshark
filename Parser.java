@@ -17,6 +17,8 @@ public class Parser {
         byte protocol = packetData[23];
         byte[] sourceIp = {packetData[26], packetData[27], packetData[28], packetData[29]};
         byte[] destinationIp = {packetData[30], packetData[31], packetData[32], packetData[33]};
+        
+        start_index = 34;
 
         System.out.print("\u001B[1mIPv4:\u001B[0m");
         System.out.print(" Version: " + version);
@@ -82,6 +84,8 @@ public class Parser {
         for(int i = 38, j = 0; i < 54 && j < destIpv6.length; i++, j++){
             destIpv6[j] = packetData[i];
         }
+        
+        start_index = 54;
 
         System.out.print("\u001B[1mIPv6:\u001B[0m");
         System.out.print(" Next header: " + interpreter.getProtocol(protocol));
@@ -92,19 +96,20 @@ public class Parser {
     }
 
     public String[] tcp(byte[] packetData){
-        byte[] sourcePort = {packetData[54], packetData[55]};
+        byte[] sourcePort = {packetData[start_index], packetData[start_index+1]};
         int sourcePortInt = ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF));
         String sourcePortString = String.format("%04X", ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF)));
-        byte[] destinationPort = {packetData[56], packetData[57]};
+        byte[] destinationPort = {packetData[start_index+2], packetData[start_index+3]};
         int destinationPortInt = ((destinationPort[0] & 0xFF)<<8) | ((destinationPort[1] & 0xFF));
         String destinationPortString = String.format("%04X", ((destinationPort[0] & 0xFF)<<8) | ((destinationPort[1] & 0xFF)));
-        byte[] sequenceNumber = {packetData[58], packetData[59], packetData[60], packetData[61]};
+        byte[] sequenceNumber = {packetData[start_index+4], packetData[start_index+5], packetData[start_index+6], packetData[start_index+7]};
         int sequenceNumberInt = ((sequenceNumber[0] & 0xFF)<<24) | ((sequenceNumber[1] & 0xFF)<<16) | ((sequenceNumber[2] & 0xFF)<<8) | ((sequenceNumber[3] & 0xFF));
-        byte[] acknowledgementNumber = {packetData[62], packetData[63], packetData[64], packetData[65]};
+        byte[] acknowledgementNumber = {packetData[start_index+8], packetData[start_index+9], packetData[start_index+10], packetData[start_index+11]};
         int acknowledgementNumberInt = ((acknowledgementNumber[0] & 0xFF)<<24) | ((acknowledgementNumber[1] & 0xFF)<<16) | ((acknowledgementNumber[2] & 0xFF)<<8) | ((acknowledgementNumber[3] & 0xFF));
-        byte headerLength = (byte) ((packetData[66] & 0xF0) >> 4);
-        byte[] flags = {packetData[67], packetData[68]};
+        byte headerLength = (byte) ((packetData[start_index+12] & 0xF0) >> 4);
+        byte[] flags = {packetData[start_index+13], packetData[start_index+14]};
         String flagsString = String.format("%04X", flags[0], flags[1]);
+        start_index = start_index+14;
 
         System.out.print("\u001B[1mTCP:\u001B[0m");
         System.out.print(" Source port: " + String.format("%d",sourcePortInt));
@@ -164,16 +169,18 @@ public class Parser {
     }
 
     public String[] udp(byte[] packetData){
-        byte[] sourcePort = {packetData[54], packetData[55]};
+        byte[] sourcePort = {packetData[start_index], packetData[start_index+1]};
         int sourcePortInt = ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF));
         String sourcePortString = String.format("%d",sourcePortInt);
 
-        byte[] destinationPort = {packetData[56], packetData[57]};
+        byte[] destinationPort = {packetData[start_index+2], packetData[start_index+3]};
         int destinationPortInt = ((destinationPort[0] & 0xFF)<<8) | ((destinationPort[1] & 0xFF));
         String destinationPortString = String.format("%d",destinationPortInt);
 
-        byte[] length = {packetData[58], packetData[59]};
+        byte[] length = {packetData[start_index+4], packetData[start_index+5]};
         int lengthInt = ((length[0] & 0xFF)<<8) | ((length[1] & 0xFF));
+        
+        start_index = start_index+8;
         
         System.out.print("\u001B[1mUDP:\u001B[0m");
         System.out.print(" Source port: " + sourcePortString);
@@ -184,9 +191,9 @@ public class Parser {
     }
 
     public void icmp(byte[] packetData){
-        byte type = packetData[34];
-        byte code = packetData[35];
-        byte[] checksum = {packetData[36], packetData[37]};
+        byte type = packetData[start_index];
+        byte code = packetData[start_index+1];
+        byte[] checksum = {packetData[start_index+2], packetData[start_index+3]};
         String checksumString = String.format("%04X", ((checksum[0] & 0xFF)<<8) | ((checksum[1] & 0xFF)));
 
         System.out.print("\u001B[1mICMP:\u001B[0m");
@@ -197,17 +204,17 @@ public class Parser {
 
     public void dns(byte[] packetData){
         Interpreter interpreter = new Interpreter();
-        byte[] transactionID = {packetData[62], packetData[63]};
+        byte[] transactionID = {packetData[start_index], packetData[start_index+1]};
         String transactionIDString = String.format("%04X", ((transactionID[0] & 0xFF)<<8) | ((transactionID[1] & 0xFF)));
-        byte[] flags = {packetData[64], packetData[65]};
+        byte[] flags = {packetData[start_index+2], packetData[start_index+3]};
         String flagsString = String.format("%04X", ((flags[0] & 0xFF)<<8) | ((flags[1] & 0xFF)));
-        byte[] questions = {packetData[66], packetData[67]};
+        byte[] questions = {packetData[start_index+4], packetData[start_index+5]};
         String questionsString = String.format("%04X", ((questions[0] & 0xFF)<<8) | ((questions[1] & 0xFF)));
-        byte[] answerRRs = {packetData[68], packetData[69]};
+        byte[] answerRRs = {packetData[start_index+6], packetData[start_index+7]};
         String answerRRsString = String.format("%04X", ((answerRRs[0] & 0xFF)<<8) | ((answerRRs[1] & 0xFF)));
-        byte[] authorityRRs = {packetData[70], packetData[71]};
+        byte[] authorityRRs = {packetData[start_index+8], packetData[start_index+9]};
         String authorityRRsString = String.format("%04X", ((authorityRRs[0] & 0xFF)<<8) | ((authorityRRs[1] & 0xFF)));
-        byte[] additionalRRs = {packetData[72], packetData[73]};
+        byte[] additionalRRs = {packetData[start_index+10], packetData[start_index+11]};
         String additionalRRsString = String.format("%04X", ((additionalRRs[0] & 0xFF)<<8) | ((additionalRRs[1] & 0xFF)));
 
         System.out.print("\u001B[1mDNS:\u001B[0m");
@@ -216,42 +223,57 @@ public class Parser {
         System.out.print(" Questions: " + questionsString);
         System.out.print(" Answer RRs: " + answerRRsString);
         System.out.print(" Authority RRs: " + authorityRRsString);
-        System.out.print(" Additional RRs: " + additionalRRsString);
+        System.out.println(" Additional RRs: " + additionalRRsString);
 
         if(questionsString.equals("0001")){
-            byte[] queryName = new byte[14];
-            for(int i = 75, j = 0; i < 89 && j < queryName.length; i++, j++){
-                queryName[j] = packetData[i];
-            }
-            String queryNameString = new String(queryName);
-            byte[] queryType = {packetData[89], packetData[90]};
+            byte[] queryName = new byte[64];
+            String[] name_index = interpreter.getDNSName(packetData, start_index);
+            start_index = Integer.parseInt(name_index[1]);
+            byte[] queryType = {packetData[start_index+1], packetData[start_index+2]};
             String queryTypeString = String.format("%04X", ((queryType[0] & 0xFF)<<8) | ((queryType[1] & 0xFF)));
-            byte[] queryClass = {packetData[91], packetData[92]};
+            if(queryTypeString.equals("0001")){
+                queryTypeString = "A (Ipv4 Address)";
+            } else if(queryTypeString.equals("001C")){
+                queryTypeString = "AAAA (Ipv6 Address)";
+            }
+            byte[] queryClass = {packetData[start_index+3], packetData[start_index+4]};//92
             String queryClassString = String.format("%04X", ((queryClass[0] & 0xFF)<<8) | ((queryClass[1] & 0xFF)));
+            if(queryClassString.equals("0001")){
+                queryClassString = "IN (Internet Address)";
+            }
 
-            System.out.print(" (Query) name: " + queryNameString);
+            System.out.print(" (Query) name: " + name_index[0]);
             System.out.print(" type: " + queryTypeString);
             System.out.println(" class: " + queryClassString); 
         }
         
 
         if(answerRRsString.equals("0001")){
-            byte[] answerType = {packetData[95], packetData[96]};
+            start_index +=6;
+            byte[] answerType = {packetData[start_index+1], packetData[start_index+2]};
             String answerTypeString = String.format("%04X", ((answerType[0] & 0xFF)<<8) | ((answerType[1] & 0xFF)));
-            byte[] answerClass = {packetData[97], packetData[98]};
+            if(answerTypeString.equals("0001")){
+                answerTypeString = "A (Ipv4 Address)";
+            } else if(answerTypeString.equals("001C")){
+                answerTypeString = "AAAA (Ipv6 Address)";
+            }
+            byte[] answerClass = {packetData[start_index+3], packetData[start_index+4]};
             String answerClassString = String.format("%04X", ((answerClass[0] & 0xFF)<<8) | ((answerClass[1] & 0xFF)));
-            byte[] answerTTL = {packetData[99], packetData[100], packetData[101], packetData[102]};
+            if(answerClassString.equals("0001")){
+                answerClassString = "IN (Internet Address)";
+            }
+            byte[] answerTTL = {packetData[start_index+5], packetData[start_index+6], packetData[start_index+7], packetData[start_index+8]};//102
             int answerTTLInt = ((answerTTL[0] & 0xFF)<<24) | ((answerTTL[1] & 0xFF)<<16) | ((answerTTL[2] & 0xFF)<<8) | ((answerTTL[3] & 0xFF));
-            
+           
             System.out.print("(Answer) type: " + answerTypeString);
             System.out.print(" class: " + answerClassString);
             System.out.print(" TTL: " + String.format("%d",answerTTLInt));
             if(answerTypeString.equals("0001")){
-                byte[] answerAddressv4 = {packetData[105], packetData[106], packetData[107], packetData[108]};
+                byte[] answerAddressv4 = {packetData[start_index+11], packetData[start_index+12], packetData[start_index+13], packetData[start_index+14]};
                 System.out.println(" Address: " + interpreter.getIpv4(answerAddressv4));
             }else {
                 byte[] answerAddressv6 = new byte[16];
-                for(int i = 105, j = 0; i < 121 && j < answerAddressv6.length; i++, j++){
+                for(int i = start_index+11, j = 0; i < start_index+27 && j < answerAddressv6.length; i++, j++){
                     answerAddressv6[j] = packetData[i];
                 }
                 System.out.println(" Address: " + interpreter.getIpv6(answerAddressv6));
@@ -261,17 +283,19 @@ public class Parser {
     }
 
     public void quic(byte[] packetData){
-        byte[] version = {packetData[63], packetData[64], packetData[65], packetData[66]};
+        byte[] version = {packetData[start_index], packetData[start_index+1], packetData[start_index+2], packetData[start_index+3]};
         String versionString = String.format("%04X", ((version[0] & 0xFF)<<24) | ((version[1] & 0xFF)<<16) | ((version[2] & 0xFF)<<8) | ((version[3] & 0xFF)));
         byte[] destinationConnectionID = new byte[8];
         String destinationConnectionIDString = "";
-        for(int i = 68, j = 0; i < 76 && j < destinationConnectionID.length; i++, j++){
+        for(int i = start_index+5, j = 0; i < start_index+13 && j < destinationConnectionID.length; i++, j++){
             destinationConnectionID[j] = packetData[i];
             destinationConnectionIDString += String.format("%02X", destinationConnectionID[j]);
         }
         
-        byte sourceConnectionID = packetData[76];
+        byte sourceConnectionID = packetData[start_index+13];
         String sourceConnectionIDString = String.format("%02X", sourceConnectionID);
+        
+        start_index = start_index+13;
 
         System.out.print("\u001B[1mQUIC:\u001B[0m");
         System.out.print(" Version: " + versionString);
