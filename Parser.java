@@ -1,6 +1,7 @@
 public class Parser {
     Interpreter interpreter;
     int start_index;
+    
     public Parser() {
         this.interpreter = new Interpreter();
         this.start_index = 0;
@@ -109,7 +110,7 @@ public class Parser {
         byte headerLength = (byte) ((packetData[start_index+12] & 0xF0) >> 4);
         byte[] flags = {packetData[start_index+13], packetData[start_index+14]};
         String flagsString = String.format("%04X", flags[0], flags[1]);
-        start_index = start_index+14;
+        start_index = start_index+20;
 
         System.out.print("\u001B[1mTCP:\u001B[0m");
         System.out.print(" Source port: " + String.format("%d",sourcePortInt));
@@ -125,45 +126,45 @@ public class Parser {
     public void http(byte[] packetData, boolean isreponse){
         String type;
         System.out.print("\u001B[1mHTTP:\u001B[0m");
-        byte[] requestmethod = {packetData[54], packetData[55], packetData[56], packetData[57], packetData[58], packetData[59], packetData[60], packetData[61], packetData[62]};
-        String requestmethodString = new String(requestmethod);
         if(isreponse){
-            type = "(Response)";
-            byte[] statusCode = {packetData[63], packetData[64], packetData[65]};
-            String statusCodeString = new String(statusCode);
-            byte[] responsePhrase = {packetData[67], packetData[68]};
-            String responsePhraseString = new String(responsePhrase);
+            type = " (Response)";
+            String[] data = interpreter.getHTTP(packetData, start_index);
+            start_index = Integer.parseInt(data[1]);
+            byte[] date = new byte[37];
+            for(int i = start_index, j = 0; i < start_index+37 && j < date.length; i++, j++){
+                date[j] = packetData[i];
+            }
 
-            System.out.print(" " + type );
-            System.out.print(" Status code: " + statusCodeString);
-            System.out.println(" Response phrase: " + responsePhraseString);
+            String s = "";
+            int i = start_index;
+            while(i<packetData.length){
+                if(packetData[i]==0x0D && packetData[i+1]==0x0A && packetData[i+2]==0x0D && packetData[i+3]==0x0A){
+                    break;
+                } else if(packetData[i]==0x0D && packetData[i+1]==0x0A) s+=" ";
+                else s+=(char)packetData[i];
+                i++;
+            }
+
+            System.out.print(type + " " + data[0]);
+            System.out.println(s);
 
         } else {
-            type = "(Request)";
-            requestmethod = new byte[]{packetData[54], packetData[55], packetData[56]};//54/61
-            requestmethodString = new String(requestmethod);
-            //byte[] requestURI = {packetData[58], packetData[59], packetData[60], packetData[61], packetData[62], packetData[63], packetData[64], packetData[65], packetData[66], packetData[67], packetData[68], packetData[69], packetData[70], packetData[71], packetData[72], packetData[73], packetData[74]};//58 to 73
-            byte[] requestURI = new byte[16];
-            for (int i = 58, j = 0; i < 74 && j < requestURI.length; i++, j++) {
-                requestURI[j] = packetData[i];
-            }
-            String requestURIString = new String(requestURI);
-            byte[] userAgent = new byte[28];
-            for(int i = 104, j = 0; i < 132 && j < userAgent.length; i++, j++){
-                userAgent[j] = packetData[i];
-            }
-            String userAgentString = new String(userAgent);
-            byte[] host = new byte[31];
-            for(int i = 132, j = 0; i < 163 && j < host.length; i++, j++){
-                host[j] = packetData[i];
-            }
-            String hostString = new String(host);
+            type = " (Request)";
+            String[] data = interpreter.getHTTP(packetData, start_index);
+            start_index = Integer.parseInt(data[1]);
 
-            System.out.print(" " + type );
-            System.out.print(" Method: " + requestmethodString);
-            System.out.print(" URI: " + requestURIString);
-            System.out.print(" " + userAgentString);
-            System.out.print(" " + hostString);
+            String s = "";
+            int i = start_index;
+            while(i<packetData.length){
+                if(packetData[i]==0x0D && packetData[i+1]==0x0A && packetData[i+2]==0x0D && packetData[i+3]==0x0A){
+                    break;
+                } else if(packetData[i]==0x0D && packetData[i+1]==0x0A) s+=" ";
+                else s+=(char)packetData[i];
+                i++;
+            }
+
+            System.out.print(type + " " + data[0]);
+            System.out.println(s);
         }
 
     }
@@ -195,15 +196,20 @@ public class Parser {
         byte code = packetData[start_index+1];
         byte[] checksum = {packetData[start_index+2], packetData[start_index+3]};
         String checksumString = String.format("%04X", ((checksum[0] & 0xFF)<<8) | ((checksum[1] & 0xFF)));
+        byte[] identifier = {packetData[start_index+4], packetData[start_index+5]};
+        int identifierInt = ((identifier[0] & 0xFF)<<8) | ((identifier[1] & 0xFF));
+        byte[] sequenceNumber = {packetData[start_index+6], packetData[start_index+7]};
+        int sequenceNumberInt = ((sequenceNumber[0] & 0xFF)<<8) | ((sequenceNumber[1] & 0xFF));
 
         System.out.print("\u001B[1mICMP:\u001B[0m");
         System.out.print(" Type: " + interpreter.getICMPType(type));
         System.out.print(" Code: " + code);
-        System.out.println(" Checksum: " + checksumString);
+        System.out.print(" Checksum: " + checksumString);
+        System.out.print(" Identifier: " + identifierInt);
+        System.out.println(" Sequence number: " + sequenceNumberInt);
     }
 
     public void dns(byte[] packetData){
-        Interpreter interpreter = new Interpreter();
         byte[] transactionID = {packetData[start_index], packetData[start_index+1]};
         String transactionIDString = String.format("%04X", ((transactionID[0] & 0xFF)<<8) | ((transactionID[1] & 0xFF)));
         byte[] flags = {packetData[start_index+2], packetData[start_index+3]};
@@ -247,7 +253,6 @@ public class Parser {
             System.out.println(" class: " + queryClassString); 
         }
         
-
         if(answerRRsString.equals("0001")){
             start_index +=6;
             byte[] answerType = {packetData[start_index+1], packetData[start_index+2]};
@@ -268,8 +273,11 @@ public class Parser {
             System.out.print("(Answer) type: " + answerTypeString);
             System.out.print(" class: " + answerClassString);
             System.out.print(" TTL: " + String.format("%d",answerTTLInt));
-            if(answerTypeString.equals("0001")){
-                byte[] answerAddressv4 = {packetData[start_index+11], packetData[start_index+12], packetData[start_index+13], packetData[start_index+14]};
+            if(answerTypeString.equals("A (Ipv4 Address)")){
+                byte[] answerAddressv4 = new byte[4];
+                for(int i = start_index+11, j = 0; i < start_index+15 && j < answerAddressv4.length; i++, j++){
+                    answerAddressv4[j] = packetData[i];
+                }
                 System.out.println(" Address: " + interpreter.getIpv4(answerAddressv4));
             }else {
                 byte[] answerAddressv6 = new byte[16];
@@ -303,5 +311,69 @@ public class Parser {
         System.out.println(" Source connection ID: " + sourceConnectionIDString);
     }
 
+    public void dhcp(byte[] packetData){
+        byte[] op = {packetData[start_index]};
+        String opString = interpreter.getDHCPMethodName(String.format("%02X", op[0]));
+        byte[] hwtype = {packetData[start_index+1]};
+        String hwtypeString = interpreter.getHardwareType(hwtype);
+        byte[] hwlen = {packetData[start_index+2]};
+        String hwlenString = String.format("%02X", hwlen[0]);
+        byte[] hops = {packetData[start_index+3]};
+        String hopsString = String.format("%02X", hops[0]);
+        byte[] transacID = {packetData[start_index+4], packetData[start_index+5], packetData[start_index+6], packetData[start_index+7]};
+        String transacIDString = String.format("%02X", transacID[0]) + String.format("%02X", transacID[1]) + String.format("%02X", transacID[2]) + String.format("%02X", transacID[3]);
+        byte[] secs = {packetData[start_index+8], packetData[start_index+9]};
+        String secsString = String.format("%02X", secs[0]) + String.format("%02X", secs[1]);
+        byte[] flags = {packetData[start_index+10], packetData[start_index+11]};
+        String flagsString = String.format("%02X", flags[0]) + String.format("%02X", flags[1]);
+        
+        byte[] clientIP = {packetData[start_index+12], packetData[start_index+13], packetData[start_index+14], packetData[start_index+15]};
+        String clientIPString = interpreter.getIpv4(clientIP);
+        byte[] serverIP = {packetData[start_index+20], packetData[start_index+21], packetData[start_index+22], packetData[start_index+23]};
+        String serverIPString = interpreter.getIpv4(serverIP);
+        byte[] gatewayIP = {packetData[start_index+24], packetData[start_index+25], packetData[start_index+26], packetData[start_index+27]};
+        String gatewayIPString = interpreter.getIpv4(gatewayIP);
+        byte[] clientMAC = new byte[6];
+        for(int i = start_index+28, j = 0; i < start_index+34 && j < clientMAC.length; i++, j++){
+            clientMAC[j] = packetData[i];
+        }
+        String clientMACString = interpreter.getMac(clientMAC);
+        start_index = start_index+44;
+        byte[] serverHostname = new byte[64];
+        byte[] bootFilename = new byte[128];
+        start_index = start_index+192;
+        byte[] magicCookie = {packetData[start_index], packetData[start_index+1], packetData[start_index+2], packetData[start_index+3]};
+        String magicCookieString = String.format("%02X", magicCookie[0]) + String.format("%02X", magicCookie[1]) + String.format("%02X", magicCookie[2]) + String.format("%02X", magicCookie[3]);
 
+        System.out.print("\u001B[1mDHCP:\u001B[0m");
+        System.out.print(" Operation: " + opString);
+        System.out.print(" Hardware type: " + hwtypeString);
+        System.out.print(" Hardware length: " + hwlenString);
+        System.out.print(" Hops: " + hopsString);
+        System.out.print(" Transaction ID: " + transacIDString);
+        System.out.print(" Seconds: " + secsString);
+        System.out.print(" Flags: " + flagsString);
+        System.out.print(" Client IP address: " + clientIPString);
+        System.out.print(" Server IP address: " + serverIPString);
+        System.out.print(" Gateway IP address: " + gatewayIPString);
+        System.out.print(" Client hardware address: " + clientMACString);
+        System.out.println(" Magic cookie: " + magicCookieString);
+
+    }
+
+    public void followtcpstream(byte[] packetData, String[] ports_flags){
+        String sourcePort = ports_flags[0];
+        String destinationPort = ports_flags[1];
+        String flags = ports_flags[2];
+        String data = "";
+        int i = start_index;
+        while(i<packetData.length){
+            if(packetData[i]==0x0D && packetData[i+1]==0x0A && packetData[i+2]==0x0D && packetData[i+3]==0x0A){
+                break;
+            } else if(packetData[i]==0x0D && packetData[i+1]==0x0A) data+=" ";
+            else data+=(char)packetData[i];
+            i++;
+        }
+        System.out.println(data);
+    }
 }

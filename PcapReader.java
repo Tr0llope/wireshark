@@ -16,8 +16,13 @@ public class PcapReader {
 
             int packetNumber = 1;
             int reading_limit = -1;
-            if(args.length == 2 && args[1]!=null){
-                reading_limit = Integer.parseInt(args[1]);
+            if(args.length >= 2 && !args[1].equals("-ftcp")){
+                try{
+                    reading_limit = Integer.parseInt(args[1]);
+                } catch (Exception e){
+                    System.out.println("Error: Invalid argument");
+                    System.exit(1);
+                }
             }
             
             while (dataInputStream.available() >= 1 && (reading_limit<0 || packetNumber<=reading_limit)) {//Tant qu'il y a au moins un byte à lire ou que la limite n'est pas atteinte
@@ -37,9 +42,37 @@ public class PcapReader {
                 if (dataInputStream.read(packetData) != packetSize) {
                     throw new IOException("Unable to read packet data");
                 }
+
+                boolean followtcpstream = false;
+                for(String s: args){
+                    if(s.equals("-ftcp")){
+                        followtcpstream = true;
+                    }
+                }
+
                 Parser parser = new Parser();
                 String packetType = parser.ethernet(packetData);
-                switch (packetType) {
+                if(followtcpstream){
+                    switch (packetType) {
+                        case "IPv4":
+                            String protocol = parser.ipv4(packetData);
+                            if(protocol.equals("TCP")){
+                                String[] ports_flags = parser.tcp(packetData);
+                                
+                            }
+                            break;
+                        case "IPv6":
+                            String protocol6 = parser.ipv6(packetData);
+                            if(protocol6.equals("TCP")){
+                                String[] ports_flags = parser.tcp(packetData);
+                                
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                } else {
+                    switch (packetType) {
                     case "ARP":
                         parser.arp(packetData);
                         break;
@@ -68,6 +101,8 @@ public class PcapReader {
                                     parser.dns(packetData);
                                 } else if(udpPorts[1].equals("443") || udpPorts[0].equals("443")){
                                     parser.quic(packetData);
+                                } else if(udpPorts[1].equals("67") || udpPorts[0].equals("67")){
+                                    parser.dhcp(packetData);
                                 }
                                 break;
                             default:
@@ -83,6 +118,8 @@ public class PcapReader {
                                     parser.dns(packetData);
                                 } else if(udpPorts[1].equals("443") || udpPorts[0].equals("443")){
                                     parser.quic(packetData);
+                                } else if(udpPorts[1].equals("67") || udpPorts[0].equals("67")){
+                                    parser.dhcp(packetData);
                                 }
                                 break;
                             case "TCP":
@@ -92,6 +129,7 @@ public class PcapReader {
                         break;
                     default:
                         break;
+                }
                 }
                 System.out.println();
                 packetNumber++;

@@ -60,6 +60,8 @@ public class Interpreter {
             switch (s) {
                 case "0001":
                     return "Ethernet";
+                case "01":
+                    return "Ethernet";
                 default:
                     return "Unknown";
             }
@@ -161,59 +163,49 @@ public class Interpreter {
                 return "Unknown";
         }
     }
-/* 
-    public String getDNSName(byte[] packetData, int start_index){
+
+    public String[] getDNSName(byte[] packetData, int start_index){
         String s = "";
         int i = start_index+12;
-            byte parcours = packetData[i];
-            while(parcours!=0){
-            	byte[] res = new byte[parcours];
-            	for(int j=0;j<(int)parcours;j++){
-            		res[j] = packetData[i+j];
-            		i++;
-            	}
-            	resultat+=(String)res;
-            	parcours = packetData[i];
+        while(i<packetData.length){
+            int length = packetData[i];
+            if(length==0) break;
+            for(int j=1; j<=length; j++){
+                s+=(char)packetData[i+j];
             }
-            start_index=i;
-        return s;
-    }
-*/
-    public String[] getDNSName(byte[] packetData, int start_index) {
-        StringBuilder sb = new StringBuilder();
-        int i = start_index+12;
-    
-        while (i < packetData.length) {
-            int labelLength = packetData[i];
-    
-            if (labelLength == 0) {
-                // End of name
-                break;
-            }
-    
-            if ((labelLength & 0xC0) == 0xC0) {
-                // This is a pointer (compression)
-                int pointer = ((labelLength & 0x3F) << 8) | (packetData[i + 1]);
-                // Follow the pointer and continue decoding
-                sb.append(getDNSName(packetData, pointer));
-                i += 2;
-                break; // A pointer marks the end of the name
-            }
-    
-            for (int j = 1; j <= labelLength; j++) {
-                sb.append((char) packetData[i + j]);
-            }
-    
-            sb.append('.');
-            i += labelLength + 1;
+            s+=".";
+            i+=length+1;
         }
-    
-        if (sb.length() > 0) {
-            sb.deleteCharAt(sb.length() - 1); // Remove trailing dot
-        }
-        start_index=i;
-        String[] result = {sb.toString(), Integer.toString(start_index)};
+        String[] result = {s, Integer.toString(i)};
         return result;
     }
-    
+
+    public String[] getHTTP(byte[] packetData, int start_index){
+        String s = "";
+        int i = start_index;
+        while(i<packetData.length){
+            if(packetData[i]==0x0D && packetData[i+1]==0x0A){
+                break;
+            }
+            if(packetData[i]!=0x20) s+=(char)packetData[i];
+            else s+=" ";
+            i++;
+        }
+        s+=" ";
+        start_index=i+2;
+        String[] result = {s, Integer.toString(start_index)};
+        return result;
+    }
+   
+    public String getDHCPMethodName(String name){
+        switch (name) {
+            case "01":
+                return "Boot Request";
+            case "02":
+                return "Boot request";
+            
+            default:
+                return "Unknown";
+        }
+    }
 }
