@@ -20,7 +20,7 @@ Concernant le suivi de flux tcp, il existe l'option `-ftcp`. Elle s'utilise de l
 java Wireshark file.pcap -ftcp
 ```
 
-## Exemple
+## Exemples
 Voici un exemple avec le dernier paquet du fichier arp.pcap après avoir exécuter cette commande:
 ```
 java Wireshark doc/arp2.pcap
@@ -30,6 +30,14 @@ java Wireshark doc/arp2.pcap
 Le même paquet vu avec wireshark:
 ![image](https://github.com/Tr0llope/wireshark/assets/91729752/825e90be-78b2-481d-9842-680ea5bf193f)
 
+Ici, d'autres exemples qui exploitent les fonctionnalités du programme:  
+```
+java Wireshark doc/http.pcap 21
+```
+
+```
+java Wireshark doc/http.pcap -ftcp
+```
 
 ## Démarche
 Ce projet fonctionne de la manière suivante:  
