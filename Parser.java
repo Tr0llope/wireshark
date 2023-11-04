@@ -1,4 +1,4 @@
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.util.*;
 public class Parser {
     Interpreter interpreter;
@@ -7,6 +7,17 @@ public class Parser {
     public Parser() {
         this.interpreter = new Interpreter();
         this.start_index = 0;
+    }
+
+    public int packetHeader(DataInputStream dataInputStream, int packetNumber, boolean followtcpstream) throws IOException{
+        byte[] packetHeader = new byte[16];
+        dataInputStream.readFully(packetHeader);
+
+        int packetSize = (packetHeader[12] & 0xFF) | ((packetHeader[13] & 0xFF) << 8) | ((packetHeader[14] & 0xFF) << 16) | ((packetHeader[15] & 0xFF) << 24);
+
+        if(!followtcpstream) System.out.println("Frame " + packetNumber + ": Size =  " + packetSize + " bytes");
+        return packetSize;
+
     }
 
     public String ipv4(byte[] packetData, boolean followtcpstream){
@@ -37,15 +48,10 @@ public class Parser {
     }
 
     public void arp(byte[] packetData){
-        Interpreter interpreter = new Interpreter();
         byte[] hardwareType = {packetData[14], packetData[15]};
         byte[] protocolType = {packetData[16], packetData[17]};
         byte hardwareSize = packetData[18];
-        
-
         byte protocolSize = packetData[19];
-        
-
         byte[] opcode = {packetData[20], packetData[21]};
         byte[] senderMac = {packetData[22], packetData[23], packetData[24], packetData[25], packetData[26], packetData[27]};
         byte[] senderIp = {packetData[28], packetData[29], packetData[30], packetData[31]};
@@ -65,7 +71,6 @@ public class Parser {
     }
 
     public String ethernet(byte[] packetData, boolean followtcpstream){
-        Interpreter interpreter = new Interpreter();
         byte[] destinationMac = {packetData[0], packetData[1], packetData[2], packetData[3], packetData[4], packetData[5]};
         byte[] sourceMac = {packetData[6], packetData[7], packetData[8], packetData[9], packetData[10], packetData[11]};
         byte[] packetType = {packetData[12], packetData[13]};
@@ -80,7 +85,6 @@ public class Parser {
     }
 
     public String ipv6(byte[] packetData){
-        Interpreter interpreter = new Interpreter();
         byte protocol = packetData[20];
         byte[] srcIpv6 = new byte[16];
         for(int i = 22, j = 0; i < 38 && j < srcIpv6.length; i++, j++){
@@ -268,6 +272,8 @@ public class Parser {
                 answerTypeString = "A (Ipv4 Address)";
             } else if(answerTypeString.equals("001C")){
                 answerTypeString = "AAAA (Ipv6 Address)";
+            } else if(answerTypeString.equals("0005")){
+                answerTypeString = "CNAME (Canonical Name)";
             }
             byte[] answerClass = {packetData[start_index+3], packetData[start_index+4]};
             String answerClassString = String.format("%04X", ((answerClass[0] & 0xFF)<<8) | ((answerClass[1] & 0xFF)));
@@ -280,18 +286,28 @@ public class Parser {
             System.out.print("(Answer) type: " + answerTypeString);
             System.out.print(" class: " + answerClassString);
             System.out.print(" TTL: " + String.format("%d",answerTTLInt));
-            if(answerTypeString.equals("A (Ipv4 Address)")){
-                byte[] answerAddressv4 = new byte[4];
-                for(int i = start_index+11, j = 0; i < start_index+15 && j < answerAddressv4.length; i++, j++){
-                    answerAddressv4[j] = packetData[i];
-                }
-                System.out.println(" Address: " + interpreter.getIpv4(answerAddressv4));
-            }else {
-                byte[] answerAddressv6 = new byte[16];
-                for(int i = start_index+11, j = 0; i < start_index+27 && j < answerAddressv6.length; i++, j++){
-                    answerAddressv6[j] = packetData[i];
-                }
-                System.out.println(" Address: " + interpreter.getIpv6(answerAddressv6));
+            switch(answerTypeString){
+                case "A (Ipv4 Address)":
+                    byte[] answerAddressv4 = new byte[4];
+                    for(int i = start_index+11, j = 0; i < start_index+15 && j < answerAddressv4.length; i++, j++){
+                        answerAddressv4[j] = packetData[i];
+                    }
+                    System.out.println(" Address: " + interpreter.getIpv4(answerAddressv4));
+                    break;
+                case "AAAA (Ipv6 Address)":
+                    byte[] answerAddressv6 = new byte[16];
+                    for(int i = start_index+11, j = 0; i < start_index+27 && j < answerAddressv6.length; i++, j++){
+                        answerAddressv6[j] = packetData[i];
+                    }
+                    System.out.println(" Address: " + interpreter.getIpv6(answerAddressv6));
+                    break;
+                case "CNAME (Canonical Name)":
+                    String[] cname_index = interpreter.getDNSName(packetData, start_index-1);
+                    System.out.println(" CName: " + cname_index[0]);
+                    break;
+                default:
+                    System.out.println();
+                    break;
             }
             
         }
@@ -408,7 +424,7 @@ public class Parser {
     }
 
     public void followtcpstream(byte[] packetData, boolean followtcpstream, List<String> httpMessages) throws UnsupportedEncodingException{
-        StringBuilder httpBuffer = new StringBuilder();
+        String httpBuffer = "";
         boolean isHTTPRequest = false;
         String protocol = ipv4(packetData, followtcpstream);
         if(protocol.equals("TCP")){
@@ -416,15 +432,13 @@ public class Parser {
             boolean isresponse = ports_flags[2].equals("0018");
 
             if(!isresponse){
-                httpBuffer.setLength(0);
                 isHTTPRequest = true;
             } 
             if(isHTTPRequest || isresponse){
-                httpBuffer.append(new String(packetData, "UTF-8"));
+                httpBuffer += new String(packetData, "UTF-8"); // Problème d'encodage
                 if (httpBuffer.toString().contains("\r\n\r\n")) {
                     String httpMessage = httpBuffer.toString();
                     httpMessages.add(httpMessage);
-                    httpBuffer.setLength(0);
                     isHTTPRequest = false;
                 }
             }

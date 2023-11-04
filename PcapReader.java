@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.util.*;
 
@@ -15,7 +14,6 @@ public class PcapReader {
             byte[] fileHeader = new byte[24];
             dataInputStream.readFully(fileHeader);
 
-            int packetNumber = 1;
             int reading_limit = -1;
             if(args.length >= 2 && !args[1].equals("-ftcp")){
                 try{
@@ -34,25 +32,21 @@ public class PcapReader {
                 }
             }
 
+            Parser parser = new Parser();
+            int packetNumber = 1;
+
             while (dataInputStream.available() >= 1 && (reading_limit<0 || packetNumber<=reading_limit)) {//Tant qu'il y a au moins un byte à lire ou que la limite n'est pas atteinte
+                    
                 // En-tête du fichier pcap (16 octets)
-                byte[] packetHeader = new byte[16];
-                dataInputStream.readFully(packetHeader);
-
-                int packetSize = (packetHeader[12] & 0xFF) |
-                    ((packetHeader[13] & 0xFF) << 8) |
-                    ((packetHeader[14] & 0xFF) << 16) |
-                    ((packetHeader[15] & 0xFF) << 24);
-
-                if(!followtcpstream) System.out.println("Frame " + packetNumber + ": Size =  " + packetSize + " bytes");
-
+                int packetSize = parser.packetHeader(dataInputStream, packetNumber, followtcpstream);
+                
                 // Données du paquet
                 byte[] packetData = new byte[packetSize];
                 if (dataInputStream.read(packetData) != packetSize) {
                     throw new IOException("Unable to read packet data");
                 }
 
-                Parser parser = new Parser();
+                
                 String packetType = parser.ethernet(packetData, followtcpstream);
                 if(followtcpstream){
                             parser.followtcpstream(packetData, followtcpstream, httpMessages);
@@ -120,6 +114,7 @@ public class PcapReader {
                 packetNumber++;
                 parser.start_index = 0;
             }
+            // Affichage option -ftcp
             for (String httpMessage : httpMessages) {
                 System.out.println(httpMessage);
             }
