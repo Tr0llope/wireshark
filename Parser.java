@@ -1,3 +1,5 @@
+import java.io.UnsupportedEncodingException;
+import java.util.*;
 public class Parser {
     Interpreter interpreter;
     int start_index;
@@ -7,7 +9,7 @@ public class Parser {
         this.start_index = 0;
     }
 
-    public String ipv4(byte[] packetData){
+    public String ipv4(byte[] packetData, boolean followtcpstream){
         byte version = (byte) ((packetData[14] & 0xF0) >> 4);
         byte headerLength = (byte) (packetData[14] & 0x0F);
         byte[] totalLength = {packetData[16], packetData[17]};
@@ -20,16 +22,17 @@ public class Parser {
         byte[] destinationIp = {packetData[30], packetData[31], packetData[32], packetData[33]};
         
         start_index = 34;
-
-        System.out.print("\u001B[1mIPv4:\u001B[0m");
-        System.out.print(" Version: " + version);
-        System.out.print(" Header length: " + headerLength);
-        System.out.print(" Total length: " + totalLengthString);
-        System.out.print(" Flags: " + flags);
-        System.out.print(" Time to live: " + timeToLive);
-        System.out.print(" Protocol: " + interpreter.getProtocol(protocol));
-        System.out.print(" Source IP: " + interpreter.getIpv4(sourceIp));
-        System.out.println(" Destination IP: " + interpreter.getIpv4(destinationIp));
+        if(!followtcpstream){
+            System.out.print("\u001B[1mIPv4:\u001B[0m");
+            System.out.print(" Version: " + version);
+            System.out.print(" Header length: " + headerLength);
+            System.out.print(" Total length: " + totalLengthString);
+            System.out.print(" Flags: " + flags);
+            System.out.print(" Time to live: " + timeToLive);
+            System.out.print(" Protocol: " + interpreter.getProtocol(protocol));
+            System.out.print(" Source IP: " + interpreter.getIpv4(sourceIp));
+            System.out.println(" Destination IP: " + interpreter.getIpv4(destinationIp));
+        }
         return interpreter.getProtocol(protocol);
     }
 
@@ -61,16 +64,18 @@ public class Parser {
         System.out.println(" Target IP: " + interpreter.getIpv4(targetIp));
     }
 
-    public String ethernet(byte[] packetData){
+    public String ethernet(byte[] packetData, boolean followtcpstream){
         Interpreter interpreter = new Interpreter();
         byte[] destinationMac = {packetData[0], packetData[1], packetData[2], packetData[3], packetData[4], packetData[5]};
         byte[] sourceMac = {packetData[6], packetData[7], packetData[8], packetData[9], packetData[10], packetData[11]};
         byte[] packetType = {packetData[12], packetData[13]};
 
-        System.out.print("\u001B[1mEthernet:\u001B[0m");
-        System.out.print(" Destination MAC: " + interpreter.getMac(destinationMac));
-        System.out.print(" Source MAC: " + interpreter.getMac(sourceMac));
-        System.out.println(" Type: " + interpreter.getPacketType(packetType));
+        if(!followtcpstream){
+            System.out.print("\u001B[1mEthernet:\u001B[0m");
+            System.out.print(" Destination MAC: " + interpreter.getMac(destinationMac));
+            System.out.print(" Source MAC: " + interpreter.getMac(sourceMac));
+            System.out.println(" Type: " + interpreter.getPacketType(packetType));
+        }
         return interpreter.getPacketType(packetType);
     }
 
@@ -96,7 +101,7 @@ public class Parser {
         return interpreter.getProtocol(protocol);
     }
 
-    public String[] tcp(byte[] packetData){
+    public String[] tcp(byte[] packetData, boolean followtcpstream){
         byte[] sourcePort = {packetData[start_index], packetData[start_index+1]};
         int sourcePortInt = ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF));
         String sourcePortString = String.format("%04X", ((sourcePort[0] & 0xFF)<<8) | ((sourcePort[1] & 0xFF)));
@@ -112,13 +117,15 @@ public class Parser {
         String flagsString = String.format("%04X", flags[0], flags[1]);
         start_index = start_index+20;
 
-        System.out.print("\u001B[1mTCP:\u001B[0m");
-        System.out.print(" Source port: " + String.format("%d",sourcePortInt));
-        System.out.print(" Destination port: " + String.format("%d",destinationPortInt));
-        System.out.print(" Sequence number: " + String.format("%d",sequenceNumberInt));
-        System.out.print(" Acknowledgement number: " + String.format("%d",acknowledgementNumberInt));
-        System.out.print(" Header length: " + headerLength);
-        System.out.println(" Flags: " + interpreter.getTCPFlags(flagsString));
+        if(!followtcpstream){
+            System.out.print("\u001B[1mTCP:\u001B[0m");
+            System.out.print(" Source port: " + String.format("%d",sourcePortInt));
+            System.out.print(" Destination port: " + String.format("%d",destinationPortInt));
+            System.out.print(" Sequence number: " + String.format("%d",sequenceNumberInt));
+            System.out.print(" Acknowledgement number: " + String.format("%d",acknowledgementNumberInt));
+            System.out.print(" Header length: " + headerLength);
+            System.out.println(" Flags: " + interpreter.getTCPFlags(flagsString));
+        }
         String [] tab = {sourcePortString, destinationPortString, flagsString};
         return tab;
     }
@@ -291,24 +298,63 @@ public class Parser {
     }
 
     public void quic(byte[] packetData){
-        byte[] version = {packetData[start_index], packetData[start_index+1], packetData[start_index+2], packetData[start_index+3]};
-        String versionString = String.format("%04X", ((version[0] & 0xFF)<<24) | ((version[1] & 0xFF)<<16) | ((version[2] & 0xFF)<<8) | ((version[3] & 0xFF)));
-        byte[] destinationConnectionID = new byte[8];
-        String destinationConnectionIDString = "";
-        for(int i = start_index+5, j = 0; i < start_index+13 && j < destinationConnectionID.length; i++, j++){
-            destinationConnectionID[j] = packetData[i];
-            destinationConnectionIDString += String.format("%02X", destinationConnectionID[j]);
-        }
-        
-        byte sourceConnectionID = packetData[start_index+13];
-        String sourceConnectionIDString = String.format("%02X", sourceConnectionID);
-        
-        start_index = start_index+13;
+        byte header = packetData[start_index];
+        byte headerType = (byte) ((header >> 7) & 0x01);
+        String headerTypeString = String.format("%02X", headerType);
+        byte fixedBit = (byte) ((header >> 6) & 0x01);
+        String fixedBitString = String.format("%02X", fixedBit);
 
         System.out.print("\u001B[1mQUIC:\u001B[0m");
-        System.out.print(" Version: " + versionString);
-        System.out.print(" Destination connection ID: " + destinationConnectionIDString);
-        System.out.println(" Source connection ID: " + sourceConnectionIDString);
+
+        if(headerTypeString.equals("00")){
+            headerTypeString = "Short";
+            byte spinBit = (byte) ((header >> 5) & 0x01);
+            String spinBitString = String.format("%02X", spinBit);
+
+            System.out.print(" Header Form: " + headerTypeString);
+            System.out.print(" Fixed Bit: " + fixedBitString);
+            System.out.println(" Spin Bit: " + spinBitString);
+        }
+        if(headerTypeString.equals("01")){
+            headerTypeString = "Long";
+            String res = "";
+            byte[] version = {packetData[start_index+1], packetData[start_index+2], packetData[start_index+3], packetData[start_index+4]};
+            String versionString = String.format("%02X", version[0]) + String.format("%02X", version[1]) + String.format("%02X", version[2]) + String.format("%02X", version[3]);
+            byte[] destConnectionIdLength = {packetData[start_index+5]};
+            int destConnectionIdLengthInt = destConnectionIdLength[0] & 0xFF;
+            byte[] destConnectionId = new byte[destConnectionIdLengthInt];
+            String destConnectionIdString = "";
+            for(int i = start_index+6, j = 0; i < start_index+6+destConnectionIdLengthInt && j < destConnectionId.length; i++, j++){
+                destConnectionId[j] = packetData[i];
+                destConnectionIdString += String.format("%02X", destConnectionId[j]);
+            }
+            byte[] srcConnectionIdLength = {packetData[start_index+6+destConnectionIdLengthInt]};
+            int srcConnectionIdLengthInt = srcConnectionIdLength[0] & 0xFF;
+            start_index = start_index+7+destConnectionIdLengthInt;
+            if(srcConnectionIdLengthInt != 0){
+                byte[] srcConnectionId = new byte[srcConnectionIdLengthInt];
+                String srcConnectionIdString = "";
+                for(int i = start_index, j = 0; i < start_index+srcConnectionIdLengthInt && j < srcConnectionId.length; i++, j++){
+                    srcConnectionId[j] = packetData[i];
+                    srcConnectionIdString += String.format("%02X", srcConnectionId[j]);
+                }
+                start_index = start_index+srcConnectionIdLengthInt;
+                byte tokenLength = packetData[start_index];
+                int tokenLengthInt = tokenLength & 0xFF;
+                res = " Source Connection ID: " + srcConnectionIdString + " Token Length: " + tokenLengthInt;
+
+            }
+            
+            System.out.print(" Header Form: " + headerTypeString);
+            System.out.print(" Fixed Bit: " + fixedBitString);
+            System.out.print(" Version: " + versionString);
+            System.out.print(" Destination Connection ID Length: " + destConnectionIdLengthInt);
+            if(destConnectionIdLengthInt != 0) System.out.print(" Destination Connection ID: " + destConnectionIdString);
+            System.out.print(" Source Connection ID Length: " + srcConnectionIdLengthInt);
+            System.out.print(" " + res);
+            System.out.println();
+        }
+        
     }
 
     public void dhcp(byte[] packetData){
@@ -361,19 +407,27 @@ public class Parser {
 
     }
 
-    public void followtcpstream(byte[] packetData, String[] ports_flags){
-        String sourcePort = ports_flags[0];
-        String destinationPort = ports_flags[1];
-        String flags = ports_flags[2];
-        String data = "";
-        int i = start_index;
-        while(i<packetData.length){
-            if(packetData[i]==0x0D && packetData[i+1]==0x0A && packetData[i+2]==0x0D && packetData[i+3]==0x0A){
-                break;
-            } else if(packetData[i]==0x0D && packetData[i+1]==0x0A) data+=" ";
-            else data+=(char)packetData[i];
-            i++;
+    public void followtcpstream(byte[] packetData, boolean followtcpstream, List<String> httpMessages) throws UnsupportedEncodingException{
+        StringBuilder httpBuffer = new StringBuilder();
+        boolean isHTTPRequest = false;
+        String protocol = ipv4(packetData, followtcpstream);
+        if(protocol.equals("TCP")){
+            String[] ports_flags = tcp(packetData,followtcpstream);
+            boolean isresponse = ports_flags[2].equals("0018");
+
+            if(!isresponse){
+                httpBuffer.setLength(0);
+                isHTTPRequest = true;
+            } 
+            if(isHTTPRequest || isresponse){
+                httpBuffer.append(new String(packetData, "UTF-8"));
+                if (httpBuffer.toString().contains("\r\n\r\n")) {
+                    String httpMessage = httpBuffer.toString();
+                    httpMessages.add(httpMessage);
+                    httpBuffer.setLength(0);
+                    isHTTPRequest = false;
+                }
+            }
         }
-        System.out.println(data);
     }
 }

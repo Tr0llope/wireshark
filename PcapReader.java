@@ -1,5 +1,6 @@
 
 import java.io.*;
+import java.util.*;
 
 public class PcapReader {
 
@@ -25,6 +26,14 @@ public class PcapReader {
                 }
             }
             
+            List<String> httpMessages = new ArrayList<String>();
+            boolean followtcpstream = false;
+            for(String s: args){
+                if(s.equals("-ftcp")){
+                    followtcpstream = true;
+                }
+            }
+
             while (dataInputStream.available() >= 1 && (reading_limit<0 || packetNumber<=reading_limit)) {//Tant qu'il y a au moins un byte à lire ou que la limite n'est pas atteinte
                 // En-tête du fichier pcap (16 octets)
                 byte[] packetHeader = new byte[16];
@@ -35,7 +44,7 @@ public class PcapReader {
                     ((packetHeader[14] & 0xFF) << 16) |
                     ((packetHeader[15] & 0xFF) << 24);
 
-                System.out.println("Frame " + packetNumber + ": Size =  " + packetSize + " bytes");
+                if(!followtcpstream) System.out.println("Frame " + packetNumber + ": Size =  " + packetSize + " bytes");
 
                 // Données du paquet
                 byte[] packetData = new byte[packetSize];
@@ -43,44 +52,20 @@ public class PcapReader {
                     throw new IOException("Unable to read packet data");
                 }
 
-                boolean followtcpstream = false;
-                for(String s: args){
-                    if(s.equals("-ftcp")){
-                        followtcpstream = true;
-                    }
-                }
-
                 Parser parser = new Parser();
-                String packetType = parser.ethernet(packetData);
+                String packetType = parser.ethernet(packetData, followtcpstream);
                 if(followtcpstream){
-                    switch (packetType) {
-                        case "IPv4":
-                            String protocol = parser.ipv4(packetData);
-                            if(protocol.equals("TCP")){
-                                String[] ports_flags = parser.tcp(packetData);
-                                
-                            }
-                            break;
-                        case "IPv6":
-                            String protocol6 = parser.ipv6(packetData);
-                            if(protocol6.equals("TCP")){
-                                String[] ports_flags = parser.tcp(packetData);
-                                
-                            }
-                            break;
-                        default:
-                            break;
-                    }
+                            parser.followtcpstream(packetData, followtcpstream, httpMessages);
                 } else {
                     switch (packetType) {
                     case "ARP":
                         parser.arp(packetData);
                         break;
                     case "IPv4":
-                        String protocol = parser.ipv4(packetData);
+                        String protocol = parser.ipv4(packetData, followtcpstream);
                         switch (protocol) {
                             case "TCP":
-                                String[] ports_flags = parser.tcp(packetData);
+                                String[] ports_flags = parser.tcp(packetData, followtcpstream);
                                 boolean isresponse = false;
                                 if (ports_flags[2].equals("0018")) {
                                     if (ports_flags[0].equals("0050")) { //source port == 80
@@ -123,7 +108,7 @@ public class PcapReader {
                                 }
                                 break;
                             case "TCP":
-                                parser.tcp(packetData);
+                                parser.tcp(packetData, followtcpstream);
                                 break;
                         }
                         break;
@@ -131,9 +116,12 @@ public class PcapReader {
                         break;
                 }
                 }
-                System.out.println();
+                if(!followtcpstream) System.out.println();
                 packetNumber++;
                 parser.start_index = 0;
+            }
+            for (String httpMessage : httpMessages) {
+                System.out.println(httpMessage);
             }
         }
     }
