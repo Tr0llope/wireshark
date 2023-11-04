@@ -3,6 +3,14 @@ public class Interpreter {
     public Interpreter() {
     }
 
+    public String bytesToString(byte[] bytes) {
+        String s = "";
+        for (byte b : bytes) {
+            s+=(String.format("%02X", b));
+        }
+        return s;
+    }
+
     public String getProtocol(byte protocol) {
         switch (protocol) {
                 case 1:
@@ -19,10 +27,7 @@ public class Interpreter {
     }
 
     public String getPacketType(byte[] packetType) {
-        String s = "";
-        for (byte b : packetType) {
-            s+=(String.format("%02X", b));
-        }
+        String s = bytesToString(packetType);
         switch (s) {
             case "0800":
                 return "IPv4";
@@ -53,10 +58,7 @@ public class Interpreter {
         }
     
     public String getHardwareType(byte[] hardwareType) {
-            String s = "";
-            for (byte b : hardwareType) {
-                s+=(String.format("%02X", b));
-            }
+            String s = bytesToString(hardwareType);
             switch (s) {
                 case "0001":
                     return "Ethernet";
@@ -86,10 +88,7 @@ public class Interpreter {
         }
     
     public String getOpcode(byte[] opcode) {
-            String s = "";
-            for (byte b : opcode) {
-                s+=(String.format("%02X", b));
-            }
+            String s = bytesToString(opcode);
             switch (s) {
                 case "0001":
                     return "Request";
@@ -145,8 +144,6 @@ public class Interpreter {
                 return "FIN";
             case "0002":
                 return "SYN";
-            case "0004":
-                return "RST";
             case "0008":
                 return "PSH";
             case "0010":
@@ -157,8 +154,6 @@ public class Interpreter {
                 return "SYN, ACK";
             case "0011":
                 return "FIN, ACK";
-            case "0014":
-                return "RST, ACK";
             default:
                 return "Unknown";
         }
