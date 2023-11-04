@@ -21,9 +21,9 @@ java Wireshark file.pcap -ftcp
 ```
 
 ## Exemples
-Voici un exemple avec le dernier paquet du fichier arp.pcap après avoir exécuter cette commande:
+Voici un exemple avec le dernier paquet du fichier arp2.pcap après avoir exécuter cette commande:
 ```
-java Wireshark doc/arp2.pcap
+java Wireshark arp2.pcap
 ```
 ![image](https://github.com/Tr0llope/wireshark/assets/91729752/b59da8b2-81a7-4ff1-aac5-6a808a8caeb2)
 
@@ -32,12 +32,14 @@ Le même paquet vu avec wireshark:
 
 Ici, d'autres exemples qui exploitent les fonctionnalités du programme:  
 ```
-java Wireshark doc/http.pcap 21
+java Wireshark http.pcap 21
 ```
+![image](https://github.com/Tr0llope/wireshark/assets/91729752/0ac42604-d85e-40a2-ac4b-7770ab168ef5)
 
 ```
-java Wireshark doc/http.pcap -ftcp
+java Wireshark http.pcap -ftcp
 ```
+![image](https://github.com/Tr0llope/wireshark/assets/91729752/b372a6e7-f39f-4743-8978-fffdde3e2991)
 
 ## Démarche
 Ce projet fonctionne de la manière suivante:  
